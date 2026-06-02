@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Book Formatter + Humanizer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --ink:#f5f0e8;
+  --dim:#9a8c7a;
+  --mute:#6b5d4d;
+  --faint:#4d4035;
+  --ghost:#2a2419;
+  --gold:#8b7355;
+  --gold2:#c4a97a;
+  --card:#161410;
+  --bg:#0c0a09;
+  --teal:#3d8f78;
+  --teal2:#5cb99f;
+  --teal-dark:#0d1f1b;
+}
+
+html{font-size:16px}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'EB Garamond',Georgia,serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:44px 20px 72px;
+}
+
+/* ── HEADER ── */
+.eyebrow{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;text-align:center}
+h1{
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-weight:600;font-size:clamp(30px,6vw,50px);
+  line-height:1.05;letter-spacing:-0.02em;
+  text-align:center;margin-bottom:12px;color:var(--ink);
+}
+.subtitle{
+  font-style:italic;color:var(--dim);font-size:16px;
+  line-height:1.6;text-align:center;max-width:520px;
+  margin:0 auto 32px;
+}
+
+/* ── API KEY ROW ── */
+.api-row{
+  width:100%;max-width:720px;
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:18px;
+}
+.api-row label{
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--gold);white-space:nowrap;
+}
+.api-input{
+  flex:1;background:var(--card);border:1px solid var(--ghost);
+  border-radius:2px;color:var(--ink);
+  font-family:monospace;font-size:13px;
+  padding:9px 13px;outline:none;transition:border-color .2s;
+}
+.api-input:focus{border-color:var(--gold)}
+.api-badge{
+  font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  padding:6px 12px;border-radius:2px;
+  background:#1a1209;color:var(--faint);
+  white-space:nowrap;transition:background .2s,color .2s;
+}
+.api-badge.ok{background:#12221a;color:#5da078}
+.api-badge.warn{background:#1f1408;color:#9a7040}
+
+/* ── TABS ── */
+.tabs{
+  width:100%;max-width:720px;
+  display:flex;
+  border-bottom:1px solid var(--ghost);
+}
+.tab{
+  padding:13px 26px;font-size:12px;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;
+  color:var(--mute);border-bottom:2px solid transparent;
+  margin-bottom:-1px;
+  transition:color .2s,border-color .2s;
+  background:none;border-top:none;border-left:none;border-right:none;
+  font-family:'EB Garamond',Georgia,serif;
+}
+.tab:hover{color:var(--dim)}
+.tab.tab-fmt.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab.tab-hum.active{color:var(--teal2);border-bottom-color:var(--teal2)}
+
+/* ── CARD ── */
+.card{
+  width:100%;max-width:720px;
+  background:var(--card);border:1px solid var(--ghost);
+  border-top:none;border-radius:0 0 3px 3px;overflow:hidden;
+}
+
+/* ── COMMON FIELD ── */
+.field-block{padding:26px 32px 0}
+.field-label{
+  display:block;font-size:10px;letter-spacing:4px;
+  text-transform:uppercase;color:var(--gold);margin-bottom:8px;
+}
+.field-label.t{color:var(--teal2)}
+.text-input{
+  width:100%;background:var(--bg);border:1px solid var(--ghost);
+  border-radius:2px;color:var(--ink);
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-size:18px;padding:10px 14px;outline:none;
+  transition:border-color .2s;
+}
+.text-input:focus{border-color:var(--gold)}
+
+/* ── DROP ZONE ── */
+.drop-zone{
+  margin:22px 32px 30px;
+  border:1px dashed #3d3328;border-radius:3px;
+  padding:50px 24px;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s;
+  background:var(--bg);user-select:none;
+}
+.drop-zone:hover,.drop-zone.over{border-color:var(--gold);background:#100e0c}
+.drop-icon{font-size:40px;margin-bottom:14px}
+.drop-main{font-size:18px;color:#c4b49a;margin-bottom:6px}
+.drop-sub{font-size:13px;color:var(--mute)}
+
+/* ── PROGRESS ── */
+.progress-wrap{padding:40px 32px}
+.progress-meta{display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px}
+.progress-meta span:first-child{color:var(--dim)}
+.progress-meta span:last-child{color:var(--gold)}
+.progress-bar{height:3px;background:var(--ghost);border-radius:2px;overflow:hidden;margin-bottom:26px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:2px;width:0%;transition:width .4s ease}
+.chunks-box{background:var(--bg);border:1px solid var(--ghost);border-radius:3px;padding:18px 20px;margin-bottom:20px}
+.chunks-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+.chunks-grid{display:flex;flex-wrap:wrap;gap:6px}
+.chunk-dot{
+  width:28px;height:28px;border-radius:2px;
+  background:var(--ghost);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:#555;font-family:monospace;
+  transition:background .3s,color .3s;
+}
+.chunk-dot.done{background:var(--gold);color:var(--ink)}
+.chunk-dot.active{background:var(--gold2);color:var(--bg)}
+.chunks-count{font-size:12px;color:var(--faint);margin-top:10px}
+.progress-note{font-size:12px;color:var(--faint);line-height:1.7}
+
+/* ── DONE ── */
+.done-wrap{padding:32px}
+.done-summary{background:var(--bg);border:1px solid var(--ghost);border-radius:3px;padding:20px;margin-bottom:22px}
+.done-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.done-star{font-size:24px}
+.done-file{font-size:12px;color:var(--mute);margin-top:3px}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tag{font-size:11px;padding:4px 10px;border-radius:2px;background:var(--ghost);color:var(--gold)}
+.tag.g{background:#12221a;color:#5da078}
+.preview-box{
+  background:var(--bg);border:1px solid var(--ghost);border-radius:3px;
+  padding:20px;max-height:260px;overflow-y:auto;margin-bottom:22px;
+  font-size:14px;line-height:1.85;color:var(--dim);white-space:pre-wrap;
+}
+.plabel{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+.btn-row{display:flex;gap:12px;flex-wrap:wrap}
+.btn-p{
+  flex:1;min-width:150px;padding:13px 18px;
+  background:var(--gold);border:none;border-radius:2px;
+  color:var(--ink);font-family:'EB Garamond',Georgia,serif;
+  font-size:15px;cursor:pointer;transition:background .2s;
+}
+.btn-p:hover{background:#a08560}
+.btn-s{
+  flex:1;min-width:150px;padding:13px 18px;
+  background:transparent;border:1px solid #3d3328;border-radius:2px;
+  color:var(--dim);font-family:'EB Garamond',Georgia,serif;
+  font-size:15px;cursor:pointer;transition:border-color .2s;
+}
+.btn-s:hover{border-color:var(--gold)}
+.print-tip{font-size:11px;color:var(--faint);margin-top:14px;line-height:1.6}
+.print-tip strong{color:var(--mute)}
+.btn-reset{
+  margin-top:18px;background:none;border:none;
+  color:var(--faint);font-size:13px;cursor:pointer;
+  text-decoration:underline;font-family:'EB Garamond',Georgia,serif;padding:0;
+}
+.btn-reset:hover{color:var(--dim)}
+
+/* ── ERROR ── */
+.error-wrap{padding:32px}
+.error-box{background:#1a0d0d;border:1px solid #3d1a1a;border-radius:3px;padding:20px;margin-bottom:22px}
+.error-title{color:#c47a7a;margin-bottom:8px;font-size:15px}
+.error-msg{color:#6b3d3d;font-size:13px}
+
+/* ── HUMANIZER ── */
+.hum-body{padding:26px 32px}
+
+.opt-label{
+  display:block;font-size:10px;letter-spacing:3px;
+  text-transform:uppercase;color:var(--teal2);margin-bottom:8px;
+}
+.opts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.opt-btn{
+  padding:6px 15px;font-size:12px;border-radius:2px;
+  border:1px solid var(--ghost);background:var(--bg);
+  color:var(--mute);cursor:pointer;
+  font-family:'EB Garamond',Georgia,serif;
+  letter-spacing:1px;text-transform:uppercase;
+  transition:border-color .2s,color .2s,background .2s;
+}
+.opt-btn:hover{border-color:var(--teal);color:var(--teal2)}
+.opt-btn.sel{border-color:var(--teal2);color:var(--teal2);background:var(--teal-dark)}
+
+textarea.h-ta{
+  width:100%;min-height:210px;resize:vertical;
+  background:var(--bg);border:1px solid var(--ghost);border-radius:2px;
+  color:var(--ink);font-family:'EB Garamond',Georgia,serif;
+  font-size:15px;line-height:1.75;padding:14px 16px;
+  outline:none;transition:border-color .2s;
+  margin-top:8px;
+}
+textarea.h-ta:focus{border-color:var(--teal2)}
+.h-ccount{font-size:11px;color:var(--faint);margin-top:6px;text-align:right}
+
+.btn-humanize{
+  margin-top:14px;width:100%;padding:14px;
+  background:var(--teal);border:none;border-radius:2px;
+  color:var(--ink);font-family:'EB Garamond',Georgia,serif;
+  font-size:15px;cursor:pointer;transition:background .2s;
+  letter-spacing:.4px;
+}
+.btn-humanize:hover{background:var(--teal2);color:#0c0a09}
+.btn-humanize:disabled{background:#162420;color:var(--faint);cursor:not-allowed}
+
+.h-result-wrap{padding:0 32px 32px}
+.h-rlabel{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--teal2);margin-bottom:12px}
+.h-result-box{
+  background:var(--bg);border:1px solid #1a3530;border-radius:3px;
+  padding:20px;font-size:15px;line-height:1.8;
+  color:var(--dim);white-space:pre-wrap;min-height:100px;
+}
+.h-btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btn-copy{
+  padding:10px 20px;background:var(--teal);border:none;border-radius:2px;
+  color:var(--ink);font-family:'EB Garamond',Georgia,serif;
+  font-size:14px;cursor:pointer;transition:background .2s;
+}
+.btn-copy:hover{background:var(--teal2);color:#0c0a09}
+.btn-clearh{
+  padding:10px 20px;background:transparent;
+  border:1px solid #1f3530;border-radius:2px;
+  color:var(--mute);font-family:'EB Garamond',Georgia,serif;
+  font-size:14px;cursor:pointer;transition:border-color .2s;
+}
+.btn-clearh:hover{border-color:var(--teal)}
+
+/* ── SPINNER ── */
+.spin{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid var(--ghost);border-top-color:var(--teal2);
+  border-radius:50%;animation:rot .7s linear infinite;
+  vertical-align:middle;margin-right:7px;
+}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ── FEATURES GRID ── */
+.features{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));
+  gap:12px;max-width:720px;width:100%;margin-top:26px;
+}
+.fc{background:var(--card);border:1px solid #1f1a13;border-radius:3px;padding:16px}
+.fi{font-size:20px;color:var(--gold);margin-bottom:8px}
+.fi.t{color:var(--teal2)}
+.fn{font-size:13px;color:#c4b49a;margin-bottom:4px}
+.fd{font-size:11px;color:var(--faint);line-height:1.55}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<p class="eyebrow">AI-Powered &nbsp;·&nbsp; Groq</p>
+<h1>Book Formatter &amp; Humanizer</h1>
+<p class="subtitle">Format your novel PDF and humanize AI-written prose — both powered by Groq's ultra-fast inference engine.</p>
+
+<!-- API KEY -->
+<div class="api-row">
+  <label for="groqKey">Groq API Key</label>
+  <input class="api-input" id="groqKey" type="password" placeholder="gsk_… · get yours free at console.groq.com" autocomplete="off" />
+  <span class="api-badge" id="keyBadge">Not set</span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab tab-fmt active" id="tabFmt" onclick="switchTab('fmt')">📖 &nbsp;PDF Formatter</button>
+  <button class="tab tab-hum"        id="tabHum" onclick="switchTab('hum')">✍️ &nbsp;Text Humanizer</button>
+</div>
+
+<!-- CARD -->
+<div class="card" id="card">
+
+  <!-- ══════════ FORMATTER PANEL ══════════ -->
+  <div id="panelFmt">
+
+    <div class="field-block" id="titleRow">
+      <label class="field-label" for="bookTitle">Book Title</label>
+      <input class="text-input" id="bookTitle" type="text" value="My Novel" placeholder="Enter your book title…" />
+    </div>
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">📖</div>
+      <p class="drop-main">Drop your novel PDF here</p>
+      <p class="drop-sub">or click to browse &nbsp;·&nbsp; any size &nbsp;·&nbsp; no word limits</p>
+      <input type="file" id="fileInput" accept=".pdf" style="display:none">
+    </div>
+
+    <!-- Processing -->
+    <div class="progress-wrap hidden" id="progressWrap">
+      <div class="progress-meta">
+        <span id="pLabel">Loading…</span>
+        <span id="pPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+      <div class="chunks-box hidden" id="chunksBox">
+        <p class="chunks-label">Processing Sections</p>
+        <div class="chunks-grid" id="chunksGrid"></div>
+        <p class="chunks-count" id="chunksCount"></p>
+      </div>
+      <p class="progress-note">✦&nbsp; Groq is reading your manuscript — fixing paragraphs, dialogue, chapter headings, punctuation and typographic details at lightning speed. No scene break symbols. Page breaks before every chapter.</p>
+    </div>
+
+    <!-- Done -->
+    <div class="done-wrap hidden" id="doneWrap">
+      <div class="done-summary">
+        <div class="done-head">
+          <div class="done-star">✦</div>
+          <div>
+            <p style="font-size:15px;color:#c4b49a">Formatting complete</p>
+            <p class="done-file" id="doneFile"></p>
+          </div>
+        </div>
+        <div class="tags" id="doneTags"></div>
+      </div>
+      <div class="preview-box">
+        <p class="plabel">Preview — first 2 000 characters</p>
+        <div id="previewText"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-p" id="btnDL">Download Formatted HTML</button>
+        <button class="btn-s" id="btnTxt">Download as Plain Text</button>
+      </div>
+      <p class="print-tip">💡 Open the HTML in Chrome/Safari → <strong>File → Print → Save as PDF</strong> for a print-ready book with Garamond typography and proper 6″ page sizing.</p>
+      <button class="btn-reset" id="btnReset">Format another book →</button>
+    </div>
+
+    <!-- Error -->
+    <div class="error-wrap hidden" id="errWrap">
+      <div class="error-box">
+        <p class="error-title">Something went wrong</p>
+        <p class="error-msg" id="errMsg"></p>
+      </div>
+      <button class="btn-p" id="btnRetry" style="max-width:180px">Try again</button>
+    </div>
+
+  </div><!-- /panelFmt -->
+
+  <!-- ══════════ HUMANIZER PANEL ══════════ -->
+  <div id="panelHum" class="hidden">
+    <div class="hum-body">
+
+      <span class="opt-label">Tone &amp; Style</span>
+      <div class="opts" id="toneOpts">
+        <button class="opt-btn sel" data-val="natural">Natural</button>
+        <button class="opt-btn"     data-val="conversational">Conversational</button>
+        <button class="opt-btn"     data-val="literary">Literary</button>
+        <button class="opt-btn"     data-val="professional">Professional</button>
+        <button class="opt-btn"     data-val="casual">Casual</button>
+      </div>
+
+      <span class="opt-label">Humanization Strength</span>
+      <div class="opts" id="intensOpts">
+        <button class="opt-btn"     data-val="light">Light</button>
+        <button class="opt-btn sel" data-val="moderate">Moderate</button>
+        <button class="opt-btn"     data-val="heavy">Heavy</button>
+      </div>
+
+      <label class="field-label t" for="hTa" style="margin-top:6px">Paste Your Text</label>
+      <textarea class="h-ta" id="hTa" placeholder="Paste AI-generated text here — any length. The humanizer rewrites it to sound natural, varied, and authentically human…"></textarea>
+      <p class="h-ccount" id="hCC">0 characters</p>
+
+      <button class="btn-humanize" id="btnHum">✍️ &nbsp;Humanize Text</button>
+    </div>
+
+    <div class="h-result-wrap hidden" id="hResWrap">
+      <p class="h-rlabel">Humanized Output</p>
+      <div class="h-result-box" id="hResBox"></div>
+      <div class="h-btn-row">
+        <button class="btn-copy" id="btnCopy">Copy to Clipboard</button>
+        <button class="btn-clearh" id="btnClearH">Clear &amp; Start Over</button>
+      </div>
+    </div>
+  </div><!-- /panelHum -->
+
+</div><!-- /card -->
+
+<!-- FEATURES -->
+<div class="features" id="features">
+  <div class="fc"><div class="fi">¶</div><p class="fn">Paragraphs</p><p class="fd">Fixes breaks, indentation &amp; spacing</p></div>
+  <div class="fc"><div class="fi">❝</div><p class="fn">Dialogue</p><p class="fd">Corrects quote marks &amp; speaker lines</p></div>
+  <div class="fc"><div class="fi">§</div><p class="fn">Chapter Breaks</p><p class="fd">New page before every chapter heading</p></div>
+  <div class="fc"><div class="fi">⌫</div><p class="fn">No Scene Breaks</p><p class="fd">Removes *** dividers — clean prose only</p></div>
+  <div class="fc"><div class="fi t">✍️</div><p class="fn">Text Humanizer</p><p class="fd">Makes AI text sound genuinely human</p></div>
+  <div class="fc"><div class="fi">∞</div><p class="fn">No Limits</p><p class="fd">Any size book or block of text</p></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let rawText       = "";
+let fmtText       = "";
+let bookTitle     = "My Novel";
+let fileName      = "";
+let chunksTotal   = 0;
+let chunksDone    = 0;
+let selTone       = "natural";
+let selIntens     = "moderate";
+let humanBusy     = false;
+
+// ══════════════════════════════════════════════
+//  ELEMENT REFS
+// ══════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const groqKeyEl  = $("groqKey");
+const keyBadge   = $("keyBadge");
+const dropZone   = $("dropZone");
+const fileInput  = $("fileInput");
+const titleInput = $("bookTitle");
+const titleRow   = $("titleRow");
+const pWrap      = $("progressWrap");
+const pLabel     = $("pLabel");
+const pPct       = $("pPct");
+const pFill      = $("pFill");
+const chunksBox  = $("chunksBox");
+const chunksGrid = $("chunksGrid");
+const chunksCount= $("chunksCount");
+const doneWrap   = $("doneWrap");
+const doneFile   = $("doneFile");
+const doneTags   = $("doneTags");
+const prevText   = $("previewText");
+const btnDL      = $("btnDL");
+const btnTxt     = $("btnTxt");
+const btnReset   = $("btnReset");
+const errWrap    = $("errWrap");
+const errMsg     = $("errMsg");
+const btnRetry   = $("btnRetry");
+const features   = $("features");
+const panelFmt   = $("panelFmt");
+const panelHum   = $("panelHum");
+const hTa        = $("hTa");
+const hCC        = $("hCC");
+const btnHum     = $("btnHum");
+const hResWrap   = $("hResWrap");
+const hResBox    = $("hResBox");
+const btnCopy    = $("btnCopy");
+const btnClearH  = $("btnClearH");
+
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+const show  = el => el.classList.remove("hidden");
+const hide  = el => el.classList.add("hidden");
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function escH(s){
+  return String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function getKey(){
+  const k = groqKeyEl.value.trim();
+  if(!k){ alert("Please enter your Groq API key.\n\nGet one free at console.groq.com"); return null; }
+  return k;
+}
+
+// key badge
+groqKeyEl.addEventListener("input", ()=>{
+  const v = groqKeyEl.value.trim();
+  if(v.startsWith("gsk_") && v.length > 20){
+    keyBadge.textContent="✓ Ready"; keyBadge.className="api-badge ok";
+  } else if(v.length > 0){
+    keyBadge.textContent="Check key"; keyBadge.className="api-badge warn";
+  } else {
+    keyBadge.textContent="Not set"; keyBadge.className="api-badge";
+  }
+});
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+function switchTab(t){
+  $("tabFmt").classList.toggle("active", t==="fmt");
+  $("tabHum").classList.toggle("active", t==="hum");
+  if(t==="fmt"){ show(panelFmt); hide(panelHum); show(features); }
+  else         { hide(panelFmt); show(panelHum); hide(features); }
+}
+
+// ══════════════════════════════════════════════
+//  FORMATTER STAGES
+// ══════════════════════════════════════════════
+function setStage(s){
+  hide(dropZone); hide(pWrap); hide(doneWrap); hide(errWrap);
+  show(titleRow);
+  if(s==="idle")       { show(dropZone); show(features); }
+  else if(s==="proc")  { show(pWrap); hide(features); hide(titleRow); }
+  else if(s==="done")  { show(doneWrap); hide(features); }
+  else if(s==="error") { show(dropZone); show(errWrap); show(features); }
+}
+
+function setP(pct, label){
+  pFill.style.width = pct + "%";
+  pLabel.textContent = label;
+  pPct.textContent   = pct + "%";
+}
+
+// ══════════════════════════════════════════════
+//  DROP ZONE EVENTS
+// ══════════════════════════════════════════════
+dropZone.addEventListener("click",  ()=> fileInput.click());
+dropZone.addEventListener("dragover", e=>{ e.preventDefault(); dropZone.classList.add("over"); });
+dropZone.addEventListener("dragleave",()=> dropZone.classList.remove("over"));
+dropZone.addEventListener("drop", e=>{
+  e.preventDefault(); dropZone.classList.remove("over");
+  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+titleInput.addEventListener("input", e=> bookTitle = e.target.value || "My Novel");
+
+btnDL.addEventListener("click", downloadHTML);
+btnTxt.addEventListener("click", downloadTxt);
+btnReset.addEventListener("click", resetFmt);
+btnRetry.addEventListener("click", resetFmt);
+
+// ══════════════════════════════════════════════
+//  PDF EXTRACTION
+// ══════════════════════════════════════════════
+function loadPDFJS(){
+  return new Promise((res,rej)=>{
+    if(window.pdfjsLib){ res(window.pdfjsLib); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    s.onload = ()=>{
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      res(window.pdfjsLib);
+    };
+    s.onerror = ()=> rej(new Error("Failed to load PDF.js"));
+    document.head.appendChild(s);
+  });
+}
+
+async function extractPDF(file){
+  const lib = await loadPDFJS();
+  const buf = await file.arrayBuffer();
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  const total = pdf.numPages;
+  let out = "";
+  for(let i=1; i<=total; i++){
+    setP(Math.round((i/total)*38), `Extracting page ${i} of ${total}…`);
+    const page    = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    let lastY = null, line = "";
+    for(const item of content.items){
+      const y = item.transform[5];
+      if(lastY !== null && Math.abs(y - lastY) > 2){
+        out += line.trimEnd() + "\n";
+        line = "";
+      }
+      line += item.str;
+      lastY = y;
+    }
+    if(line) out += line + "\n";
+    out += "\n";
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════
+//  CHUNKING
+// ══════════════════════════════════════════════
+function chunkText(text, max=10000){
+  const paras = text.split(/\n\n+/);
+  const chunks = [];
+  let cur = "";
+  for(const p of paras){
+    if(cur && (cur+"\n\n"+p).length > max){ chunks.push(cur.trim()); cur = p; }
+    else cur = cur ? cur+"\n\n"+p : p;
+  }
+  if(cur.trim()) chunks.push(cur.trim());
+  return chunks;
+}
+
+// ══════════════════════════════════════════════
+//  GROQ CALL
+// ══════════════════════════════════════════════
+async function groqCall(system, user, temp=0.35, maxTok=8000){
+  const key = getKey();
+  if(!key) throw new Error("No API key.");
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+key
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      max_tokens: maxTok,
+      temperature: temp,
+      messages:[
+        {role:"system", content: system},
+        {role:"user",   content: user}
+      ]
+    })
+  });
+
+  if(!res.ok){
+    const e = await res.json().catch(()=>({}));
+    throw new Error(e.error?.message || "Groq API error "+res.status);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
+// ══════════════════════════════════════════════
+//  FORMATTER PROMPTS
+// ══════════════════════════════════════════════
+const FMT_SYSTEM = `You are an expert literary editor and book formatter for novels and long-form fiction.
+
+STRICT RULES — follow exactly, no exceptions:
+
+1. CHAPTER HEADINGS: Detect chapter titles/numbers (e.g. "Chapter 1", "CHAPTER ONE", "Part I", "Prologue", "Epilogue", "Interlude"). Output them on their own line, properly title-cased. Place [CHAPTER_BREAK] on the line immediately before the heading. Example:
+[CHAPTER_BREAK]
+Chapter One
+
+2. PARAGRAPHS: Separate every paragraph with one blank line. Standard body text — no tab characters needed.
+
+3. DIALOGUE: Every new speaker starts on a new line. Fix mismatched or orphaned quotation marks. Use curly/smart quotes.
+
+4. NO SCENE BREAKS — CRITICAL: Remove ALL of the following completely and without replacement: "* * *", "***", "* *", "---", "—" when used alone as a divider, "#", and any other decorative section separator symbols. The prose simply continues on the next line after removal. Do NOT insert any replacement text.
+
+5. PUNCTUATION: em dashes: -- → —  |  ellipsis: ... → …  |  straight quotes → curly quotes  |  double spaces → single space.
+
+6. HYPHENATION: Merge words split across lines (e.g. "con-\ntinued" → "continued").
+
+7. ARTIFACTS: Strip out page headers, footers, page numbers, and running titles that got baked into the extracted text.
+
+8. CAPITALIZATION: Fix unintentional ALL CAPS. Preserve deliberate stylistic choices.
+
+9. PRESERVE AUTHOR VOICE: Never change the author's actual words, story content, or personal style. Fix formatting only.
+
+Return ONLY the formatted text. No preamble, no commentary, no markdown code fences.`;
+
+// ══════════════════════════════════════════════
+//  CHUNK DOTS UI
+// ══════════════════════════════════════════════
+function buildDots(total){
+  chunksGrid.innerHTML = "";
+  for(let i=0; i<total; i++){
+    const d = document.createElement("div");
+    d.className="chunk-dot"; d.id="cd"+i; d.textContent=i+1;
+    chunksGrid.appendChild(d);
+  }
+  chunksCount.textContent = "0 of "+total+" sections formatted";
+  show(chunksBox);
+}
+function markDot(i, state){
+  const d = $("cd"+i); if(!d) return;
+  d.classList.remove("done","active");
+  if(state==="done"  ){ d.classList.add("done");   d.textContent="✓"; }
+  if(state==="active"){ d.classList.add("active"); }
+}
+
+// ══════════════════════════════════════════════
+//  MAIN FORMAT FLOW
+// ══════════════════════════════════════════════
+async function handleFile(file){
+  if(file.type !== "application/pdf"){ showErr("Please upload a valid PDF file."); return; }
+  if(!getKey()) return;
+
+  fileName = file.name;
+  rawText = ""; fmtText = "";
+
+  const det = file.name.replace(/\.pdf$/i,"").replace(/[-_]/g," ");
+  bookTitle = det || bookTitle;
+  titleInput.value = bookTitle;
+
+  setStage("proc");
+  setP(2,"Loading PDF…");
+
+  try{
+    rawText = await extractPDF(file);
+    setP(42,"Analyzing book structure…");
+    await sleep(300);
+
+    const chunks = chunkText(rawText);
+    chunksTotal = chunks.length; chunksDone = 0;
+    buildDots(chunksTotal);
+    setP(48,"Formatting with Groq…");
+
+    let combined = "";
+    for(let i=0; i<chunks.length; i++){
+      markDot(i,"active");
+      setP(48+Math.round((i/chunks.length)*44), `Formatting section ${i+1} of ${chunks.length}…`);
+      const r = await groqCall(FMT_SYSTEM, "Format this book text:\n\n"+chunks[i]);
+      combined += (i>0 ? "\n\n" : "") + r;
+      markDot(i,"done");
+      chunksDone = i+1;
+      chunksCount.textContent = chunksDone+" of "+chunksTotal+" sections formatted";
+    }
+
+    fmtText = combined;
+    setP(97,"Preparing download…");
+    await sleep(300);
+    setP(100,"Done!"); await sleep(200);
+    showDone();
+  } catch(e){
+    showErr(e.message || "Something went wrong.");
+  }
+}
+
+function showDone(){
+  setStage("done");
+  doneFile.textContent = fileName;
+  const wc = rawText.split(/\s+/).length.toLocaleString();
+  doneTags.innerHTML = `
+    <span class="tag">${wc} words extracted</span>
+    <span class="tag">${chunksTotal} sections processed</span>
+    <span class="tag g">✓ Groq formatted</span>`;
+  prevText.textContent = fmtText.slice(0,2000)+(fmtText.length>2000?"\n\n…":"");
+}
+
+function showErr(msg){ setStage("error"); errMsg.textContent = msg; }
+
+function resetFmt(){
+  rawText=""; fmtText=""; chunksTotal=0; chunksDone=0;
+  fileInput.value=""; chunksGrid.innerHTML="";
+  setP(0,""); hide(chunksBox); setStage("idle");
+}
+
+// ══════════════════════════════════════════════
+//  TEXT HUMANIZER
+// ══════════════════════════════════════════════
+
+// Option buttons
+document.querySelectorAll("#toneOpts .opt-btn").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#toneOpts .opt-btn").forEach(x=>x.classList.remove("sel"));
+    b.classList.add("sel"); selTone = b.dataset.val;
+  });
+});
+document.querySelectorAll("#intensOpts .opt-btn").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#intensOpts .opt-btn").forEach(x=>x.classList.remove("sel"));
+    b.classList.add("sel"); selIntens = b.dataset.val;
+  });
+});
+
+hTa.addEventListener("input",()=>{
+  hCC.textContent = hTa.value.length.toLocaleString()+" characters";
+});
+
+function buildHumSystem(){
+  const toneMap = {
+    natural:        "natural, flowing prose that reads like a thoughtful human writer",
+    conversational: "warm, conversational prose — relaxed, approachable, as if talking directly to the reader",
+    literary:       "rich literary prose with varied sentence rhythm, evocative imagery, and a distinct authorial voice",
+    professional:   "polished professional prose — clear and confident without being robotic or stiff",
+    casual:         "casual, friendly prose with natural contractions, everyday language, and easy rhythm"
+  };
+  const intensMap = {
+    light:    "Make targeted, minimal edits — smooth out AI patterns and robotic phrasing while preserving the original structure as much as possible.",
+    moderate: "Substantially rewrite to feel authentically human. Vary sentence length and structure, replace generic phrases, add natural flow and rhythm throughout.",
+    heavy:    "Completely transform the text. Rewrite sentences freely with maximum variation in length and structure. Eliminate every detectable AI pattern — inject personality, natural rhythm, and genuine human voice throughout."
+  };
+
+  return `You are a skilled human ghostwriter and editor. Your task: rewrite AI-generated text so it sounds completely natural and human.
+
+TARGET TONE: ${toneMap[selTone]}
+
+TRANSFORMATION LEVEL: ${intensMap[selIntens]}
+
+HUMANIZATION RULES — apply all of these:
+• Vary sentence length dramatically — mix short punchy sentences with long flowing ones
+• Use contractions naturally: don't, it's, they're, I've, we'll, you'd, etc.
+• BANNED AI WORDS/PHRASES — never use: "delve into", "it's worth noting", "in conclusion", "furthermore", "moreover", "in today's world", "tapestry", "navigate", "crucial", "pivotal", "game-changer", "leverage", "utilize", "multifaceted", "embark", "realm", "unleash potential", "at its core", "in the realm of", "it is important to note", "one must consider"
+• Add natural transitions — make ideas flow the way a human would connect them
+• Mix active and passive voice naturally (don't force either)
+• Break repetitive paragraph length patterns — vary paragraph size
+• Don't start multiple sentences in a row the same way
+• Use specific, concrete language over vague generalities
+• Let ideas breathe — avoid cramming every sentence with qualifications
+• PRESERVE every fact, argument, and meaning — only the expression changes
+
+Return ONLY the rewritten text. No notes. No preamble. No explanations.`;
+}
+
+btnHum.addEventListener("click", async ()=>{
+  if(humanBusy) return;
+  const text = hTa.value.trim();
+  if(!text){ alert("Please paste some text to humanize."); return; }
+  if(!getKey()) return;
+
+  humanBusy = true;
+  btnHum.disabled = true;
+  btnHum.innerHTML = '<span class="spin"></span>Humanizing…';
+
+  show(hResWrap);
+  hResBox.innerHTML = '<span class="spin"></span>Processing with Groq…';
+
+  try{
+    const chunks = chunkText(text, 7500);
+    let combined = "";
+
+    for(let i=0; i<chunks.length; i++){
+      if(chunks.length > 1){
+        hResBox.innerHTML = `<span class="spin"></span>Humanizing chunk ${i+1} of ${chunks.length}…`;
+      }
+      const r = await groqCall(buildHumSystem(), "Rewrite this text:\n\n"+chunks[i], 0.75, 8000);
+      combined += (i>0 ? "\n\n" : "") + r;
+    }
+
+    hResBox.textContent = combined;
+  } catch(e){
+    hResBox.innerHTML = `<span style="color:#c47a7a">Error: ${escH(e.message)}</span>`;
+  } finally{
+    humanBusy = false;
+    btnHum.disabled = false;
+    btnHum.innerHTML = "✍️ &nbsp;Humanize Text";
+  }
+});
+
+btnCopy.addEventListener("click", async ()=>{
+  const t = hResBox.textContent; if(!t) return;
+  try{
+    await navigator.clipboard.writeText(t);
+    btnCopy.textContent = "✓ Copied!";
+    setTimeout(()=>{ btnCopy.textContent="Copy to Clipboard"; }, 2000);
+  } catch{ btnCopy.textContent="Copy failed"; }
+});
+
+btnClearH.addEventListener("click",()=>{
+  hTa.value=""; hCC.textContent="0 characters";
+  hResBox.textContent=""; hide(hResWrap);
+});
+
+// ══════════════════════════════════════════════
+//  HTML OUTPUT BUILDER
+// ══════════════════════════════════════════════
+function buildBodyHTML(text){
+  const lines = text.split("\n");
+  let html = "", i = 0, firstCh = true;
+
+  while(i < lines.length){
+    const line = lines[i].trim();
+    if(!line){ i++; continue; }
+
+    // Explicit chapter break marker
+    if(line === "[CHAPTER_BREAK]"){
+      i++;
+      while(i < lines.length && !lines[i].trim()) i++;
+      const heading = lines[i] ? lines[i].trim() : "";
+      if(heading){
+        const nb = firstCh ? ' style="page-break-before:auto"' : '';
+        html += `<h2 class="ch"${nb}>${escH(heading)}</h2>\n`;
+        firstCh = false;
+      }
+      i++; continue;
+    }
+
+    // Fallback: detect headings that weren't marked
+    if(/^(chapter|part|prologue|epilogue|interlude|book)\s*[\divxlcIVXLC]*/i.test(line) && line.length < 70){
+      const nb = firstCh ? ' style="page-break-before:auto"' : '';
+      html += `<h2 class="ch"${nb}>${escH(line)}</h2>\n`;
+      firstCh = false; i++; continue;
+    }
+
+    html += `<p>${escH(line)}</p>\n`;
+    i++;
+  }
+  return html;
+}
+
+function buildFullHTML(title, text){
+  const body = buildBodyHTML(text);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${escH(title)}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'EB Garamond',Georgia,serif;font-size:12.5pt;line-height:1.82;color:#1a1209;background:#fff}
+.page{width:6in;margin:0 auto;padding:1in 0.8in}
+.title-page{min-height:6in;display:flex;flex-direction:column;align-items:center;justify-content:center;page-break-after:always;text-align:center}
+.book-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:32pt;font-weight:600;letter-spacing:.01em;line-height:1.15;color:#0d0905;margin-bottom:.3in}
+.rule{width:1.5in;height:1px;background:#c8b89a;margin:0 auto}
+h2.ch{
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-size:20pt;font-weight:600;
+  text-align:center;text-transform:uppercase;
+  letter-spacing:.08em;color:#0d0905;
+  margin-top:1.2in;margin-bottom:.45in;
+  page-break-before:always;break-before:page;
+}
+p{text-indent:1.6em;margin-bottom:0;text-align:justify;hyphens:auto;orphans:3;widows:3}
+p+p{margin-top:0}
+h2.ch+p{text-indent:0}
+@media print{
+  body{background:white}
+  .page{width:100%;padding:.75in .8in}
+  h2.ch{page-break-before:always;break-before:page}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="title-page">
+    <div class="book-title">${escH(title)}</div>
+    <div class="rule"></div>
+  </div>
+  ${body}
+</div>
+</body>
+</html>`;
+}
+
+function downloadHTML(){
+  trigger(new Blob([buildFullHTML(bookTitle,fmtText)],{type:"text/html"}),
+          bookTitle.replace(/\s+/g,"_")+"_formatted.html");
+}
+function downloadTxt(){
+  trigger(new Blob([fmtText],{type:"text/plain"}),
+          bookTitle.replace(/\s+/g,"_")+"_formatted.txt");
+}
+function trigger(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download=name; a.click();
+  setTimeout(()=> URL.revokeObjectURL(url), 2000);
+}
+</script>
+</body>
+</html>
